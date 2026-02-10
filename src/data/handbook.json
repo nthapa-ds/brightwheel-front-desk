@@ -1,0 +1,67 @@
+{
+  "school_info": {
+    "name": "Albuquerque Child Development Center",
+    "phone": "505-767-6500",
+    "timezone": "America/Denver",
+    "last_updated": "2024-01-15",
+    "maintained_by": "Director Sarah"
+  },
+  "protocols": [
+    {
+      "id": "HEALTH-01",
+      "topic": "Sickness & Fever Exclusion",
+      "urgency": "critical",
+      "content": "Exclusion is required if a child has a fever of 100.4°F or greater (axillary/armpit) accompanied by behavior changes or other signs of illness. Children must be fever-free for 24 hours without the use of fever-reducing medication before returning.",
+      "display_source": "Health Protocol §4.2",
+      "operator_action": "Strict exclusion. Do not admit child.",
+      "keywords": ["fever", "sick", "temperature", "illness", "vomit", "tylenol", "motrin", "medicine", "cough", "diarrhea"]
+    },
+    {
+      "id": "SAFETY-01",
+      "topic": "Emergency & Authorized Pickup",
+      "urgency": "critical",
+      "content": "Children will only be released to persons listed on the enrollment form. In an emergency, if a parent cannot pick up the child, they must call 505-767-6500 to verbally authorize a temporary pickup person. Photo ID will be required.",
+      "display_source": "Family Handbook §5.1",
+      "operator_action": "Verify ID. Call parents if unknown.",
+      "keywords": ["pickup", "emergency", "dad", "mom", "grandma", "aunt", "stranger", "custody"]
+    }
+  ],
+  "policies": [
+    {
+      "id": "OPS-01",
+      "category": "operations",
+      "topic": "Holidays & Closures",
+      "content": "Centers are closed on the following holidays: New Year's Day, Martin Luther King Jr. Day, Memorial Day, Independence Day, Labor Day, Veterans Day, Thanksgiving (and the day after), and Christmas Day (Dec 25).",
+      "display_source": "2024 Calendar",
+      "operator_action": "Check current date against closure list.",
+      "keywords": ["holiday", "closed", "open", "veterans", "christmas", "labor day", "schedule", "calendar"]
+    },
+    {
+      "id": "ENROLL-01",
+      "category": "enrollment",
+      "topic": "Tuition & Eligibility",
+      "content": "Our program is funded through Head Start, Early Head Start, and NM Pre-K grants. Eligibility is based on income and family needs. We do not have a standard tuition rate. Please contact an enrollment specialist at 505-767-6500 to determine your eligibility.",
+      "display_source": "Enrollment Guide §2.1",
+      "operator_action": "Refer to Enrollment Specialist.",
+      "keywords": ["tuition", "cost", "price", "rates", "enroll", "apply", "payment"]
+    },
+    {
+      "id": "ENROLL-02",
+      "category": "enrollment",
+      "topic": "Scheduling a Tour",
+      "content": "To schedule a tour of a Child Development Center, please call 505-767-6500. Tours are not currently bookable online.",
+      "display_source": "Website FAQ",
+      "operator_action": "Take message for callback.",
+      "keywords": ["tour", "visit", "see", "schedule", "book"]
+    },
+    {
+      "id": "FOOD-01",
+      "category": "nutrition",
+      "topic": "Meals & Lunch",
+      "content": "We participate in the Child and Adult Care Food Program (CACFP). Breakfast, lunch, and an afternoon snack are provided to all children at no cost. Meals follow USDA nutrition guidelines.",
+      "display_source": "Nutrition Policy §3.4",
+      "operator_action": "Provide current menu if asked.",
+      "keywords": ["lunch", "food", "snack", "hungry", "menu", "eat", "allergies"]
+    }
+  ]
+}
