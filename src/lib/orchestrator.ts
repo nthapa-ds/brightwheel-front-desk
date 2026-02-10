@@ -2,23 +2,30 @@ import { bedrock } from '@ai-sdk/amazon-bedrock';
 import { generateText } from 'ai';
 import initialHandbookData from '../data/handbook.json'; 
 
+// --- TYPES ---
 export interface InteractionLog {
   id: string;
   timestamp: string;
   query: string;
   response: string;
   latencyMs: number;
-  source: string;
+  source: 'CACHE' | 'AI' | 'ERROR';
   status: 'success' | 'error';
+  category?: 'MATCH' | 'GAP' | 'UNRELATED';
 }
 
 export class AIOrchestrator {
   private model = bedrock('us.anthropic.claude-3-5-sonnet-20241022-v2:0');
   private cache = new Map<string, string>();
   private logs: InteractionLog[] = [];
+  
+  // Load initial data
+  // We make this public so we can debug if needed, but usually keep private
+  public handbook = { ...initialHandbookData };
 
-  // STATE: Load JSON into memory
-  private handbook = { ...initialHandbookData };
+  constructor() {
+    console.log("🚀 AI Orchestrator Initialized (In-Memory)");
+  }
 
   // --- ADMIN TOOLS ---
 
@@ -34,57 +41,62 @@ export class AIOrchestrator {
   }
 
   public updatePolicy(id: string, updates: any) {
-    // Clear cache so the AI uses the new data immediately
     this.cache.clear();
-  
-    // Look in protocols
-    const protocolIndex = this.handbook.protocols.findIndex(p => p.id === id);
-    if (protocolIndex !== -1) {
-      // Merge the updates into the existing protocol
-      this.handbook.protocols[protocolIndex] = { 
-        ...this.handbook.protocols[protocolIndex], 
-        ...updates 
-      };
+    
+    // 1. Try to find and update existing protocol
+    const pIdx = this.handbook.protocols.findIndex(p => p.id === id);
+    if (pIdx !== -1) {
+      this.handbook.protocols[pIdx] = { ...this.handbook.protocols[pIdx], ...updates };
+      return true;
+    }
+
+    // 2. Try to find and update existing policy
+    const polIdx = this.handbook.policies.findIndex(p => p.id === id);
+    if (polIdx !== -1) {
+      this.handbook.policies[polIdx] = { ...this.handbook.policies[polIdx], ...updates };
+      return true;
+    }
+
+    // 3. If ID not found, it's a NEW policy (Upsert)
+    // Determine type based on updates.type or default to 'policy'
+    if (updates.type === 'protocol') {
+        this.handbook.protocols.unshift({ ...updates, id });
+    } else {
+        this.handbook.policies.unshift({ ...updates, id });
+    }
+    return true;
+  }
+
+  public deletePolicy(id: string) {
+    this.cache.clear();
+    
+    const pIdx = this.handbook.protocols.findIndex(p => p.id === id);
+    if (pIdx !== -1) {
+      this.handbook.protocols.splice(pIdx, 1);
       return true;
     }
   
-    // Look in policies
-    const policyIndex = this.handbook.policies.findIndex(p => p.id === id);
-    if (policyIndex !== -1) {
-      // Merge the updates into the existing policy
-      this.handbook.policies[policyIndex] = { 
-        ...this.handbook.policies[policyIndex], 
-        ...updates 
-      };
+    const polIdx = this.handbook.policies.findIndex(p => p.id === id);
+    if (polIdx !== -1) {
+      this.handbook.policies.splice(polIdx, 1);
       return true;
     }
-  
     return false;
   }
 
-  // RAG LOGIC 
+  // --- RAG LOGIC ---
 
   private getContext(): string {
     const protocols = this.handbook.protocols.map(p => 
-      `[PROTOCOL - ${p.urgency.toUpperCase()}]
-       TOPIC: ${p.topic}
-       CONTENT: "${p.content}"
-       OPERATOR NOTE: ${p.operator_action}
-       SOURCE: ${p.display_source}`
+      `[PROTOCOL - ${p.urgency?.toUpperCase() || 'STANDARD'}] TOPIC: ${p.topic} CONTENT: "${p.content}" SOURCE: ${p.display_source} NOTE: ${p.operator_action}`
     ).join('\n---\n');
 
     const policies = this.handbook.policies.map(p => 
-      `[POLICY]
-       TOPIC: ${p.topic}
-       CONTENT: "${p.content}"
-       OPERATOR NOTE: ${p.operator_action}
-       SOURCE: ${p.display_source}`
+      `[POLICY] TOPIC: ${p.topic} CONTENT: "${p.content}" SOURCE: ${p.display_source} NOTE: ${p.operator_action}`
     ).join('\n---\n');
 
-    return `CRITICAL SAFETY PROTOCOLS:\n${protocols}\n\nGENERAL POLICIES:\n${policies}`;
+    return `SCHOOL NAME: ${this.handbook.school_info.name}\n\nPROTOCOLS:\n${protocols}\n\nPOLICIES:\n${policies}`;
   }
-
-  // GENERATION LOGIC 
 
   async generateResponse(userQuery: string) {
     const startTime = Date.now();
@@ -100,32 +112,28 @@ export class AIOrchestrator {
         response: response,
         latencyMs: Date.now() - startTime,
         source: 'CACHE',
-        status: 'success'
+        status: 'success',
+        category: 'MATCH'
       });
-      return { success: true, text: response, metadata: { model: "cache-hit" } };
+      return { success: true, text: response, metadata: { model: "cache-hit", category: "MATCH" } };
     }
 
-    // Build Context
-    const context = this.getContext();
-    
-    // SYSTEM PROMPT
     const systemPrompt = `
       You are the AI Front Desk for ${this.handbook.school_info.name}.
-      CURRENT DATE: ${new Date().toLocaleDateString()}
       
-      CORE INSTRUCTIONS:
-      1. USE ONLY the provided context.
-      2. SAFETY FIRST: Quote rules exactly for "CRITICAL" protocols.
-      3. CITATIONS: You MUST cite the [SOURCE] provided in the data at the end of your response.
-      4. OPERATOR NOTES: Pay attention to "OPERATOR NOTE" for instructions on how to handle the situation (e.g., escalating to a nurse).
-      5. TONE: Professional and warm.
-      
-      CONTEXT DATA:
-      ${context}
+      INSTRUCTIONS:
+      1. Use ONLY provided context. 
+      2. Cite [SOURCE] at the end.
+      3. Categorize your answer at the very end of your response on a new line using exactly one of these tags:
+         [STATUS: MATCH] - Answer found in context.
+         [STATUS: GAP] - Question is about school/childcare but info is missing.
+         [STATUS: UNRELATED] - Question is not about school policies.
+
+      CONTEXT:
+      ${this.getContext()}
     `;
 
     try {
-      // Call AI
       const result = await generateText({
         model: this.model,
         system: systemPrompt,
@@ -133,33 +141,39 @@ export class AIOrchestrator {
         temperature: 0,
       });
 
-      this.cache.set(cacheKey, result.text);
+      let category: any = 'MATCH';
+      if (result.text.includes('[STATUS: GAP]')) category = 'GAP';
+      else if (result.text.includes('[STATUS: UNRELATED]')) category = 'UNRELATED';
+
+      const cleanText = result.text.replace(/\[STATUS: (.*?)\]/g, "").trim();
+
+      this.cache.set(cacheKey, cleanText);
       this.logs.push({
         id: Math.random().toString(36).substring(7),
         timestamp: new Date().toISOString(),
         query: userQuery,
-        response: result.text,
+        response: cleanText,
         latencyMs: Date.now() - startTime,
         source: 'AI',
-        status: 'success'
+        status: 'success',
+        category: category
       });
 
-      return { success: true, text: result.text, metadata: { model: "claude-3-5-sonnet-v2" } };
+      return { success: true, text: cleanText, metadata: { model: "claude-3-5-sonnet-v2", category } };
 
     } catch (error) {
-      console.error("AI Error:", error);
-      this.logs.push({
-        id: Math.random().toString(36).substring(7),
-        timestamp: new Date().toISOString(),
-        query: userQuery,
-        response: "Error",
-        latencyMs: Date.now() - startTime,
-        source: 'ERROR',
-        status: 'error'
-      });
-      return { success: false, text: "System Error.", metadata: { error: String(error) } };
+      console.error("Bedrock Error:", error);
+      return { success: false, text: "System Error." };
     }
   }
 }
 
-export const orchestrator = new AIOrchestrator();
+// --- THE GLOBAL SINGLETON FIX ---
+// This ensures the instance survives Hot Reloads in development
+const globalForOrchestrator = global as unknown as { orchestrator: AIOrchestrator };
+
+export const orchestrator = globalForOrchestrator.orchestrator || new AIOrchestrator();
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForOrchestrator.orchestrator = orchestrator;
+}

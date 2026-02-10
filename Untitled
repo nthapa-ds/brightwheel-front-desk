@@ -1,0 +1,24 @@
+🏫 Brightwheel Front Desk AI
+
+A production-ready Intelligent Assistant for Child Development Centers. Built with a focus on Safety-First RAG and Dynamic Policy Control.
+🛠️ Architecture
+
+This project uses a Retrieval-Augmented Generation (RAG) architecture to provide grounded, factual answers based on school handbooks.
+
+    LLM: Anthropic Claude 3.5 Sonnet v2(via Amazon Bedrock)
+    Framework: Next.js 15+, Tailwind CSS, Vercel AI SDK
+    Data: JSON-based Knowledge Base with real-time RAM-state management.
+
+🌟 Key Engineering Features
+
+    Dynamic Context Injection: The system prioritizes "Critical Protocols" over general policies to ensure child safety.
+    Operator-in-the-Loop: Admins can edit policies in real-time. Edits trigger a global cache invalidation to ensure immediate AI alignment.
+    Safety Guardrails: Internal "Operator Notes" guide the AI's logic (e.g., triage/escalation) without exposing internal technical instructions to parents.
+    Latency Monitoring: Built-in telemetry to track AI vs. Cache response times.
+
+🚦 Getting Started
+Clone & Install:
+
+git clone <repo-url>
+npm install
+
