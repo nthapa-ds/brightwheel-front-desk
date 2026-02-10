@@ -2,7 +2,7 @@ import { bedrock } from '@ai-sdk/amazon-bedrock';
 import { generateText } from 'ai';
 import initialHandbookData from '../data/handbook.json'; 
 
-// --- TYPES ---
+//  TYPES 
 export interface InteractionLog {
   id: string;
   timestamp: string;
@@ -20,14 +20,13 @@ export class AIOrchestrator {
   private logs: InteractionLog[] = [];
   
   // Load initial data
-  // We make this public so we can debug if needed, but usually keep private
   public handbook = { ...initialHandbookData };
 
   constructor() {
     console.log("🚀 AI Orchestrator Initialized (In-Memory)");
   }
 
-  // --- ADMIN TOOLS ---
+  //ADMIN TOOLS 
 
   public getLogs() {
     return this.logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -84,7 +83,7 @@ export class AIOrchestrator {
     return false;
   }
 
-  // --- RAG LOGIC ---
+  // RAG LOGIC
 
   private getContext(): string {
     const protocols = this.handbook.protocols.map(p => 
@@ -120,6 +119,7 @@ export class AIOrchestrator {
 
     const systemPrompt = `
       You are the AI Front Desk for ${this.handbook.school_info.name}.
+      CURRENT TIME: ${new Date().toLocaleString()}
       
       INSTRUCTIONS:
       1. Use ONLY provided context. 
@@ -168,8 +168,7 @@ export class AIOrchestrator {
   }
 }
 
-// --- THE GLOBAL SINGLETON FIX ---
-// This ensures the instance survives Hot Reloads in development
+// For hot reloading in development
 const globalForOrchestrator = global as unknown as { orchestrator: AIOrchestrator };
 
 export const orchestrator = globalForOrchestrator.orchestrator || new AIOrchestrator();
